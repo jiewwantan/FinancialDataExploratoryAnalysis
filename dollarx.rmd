@@ -1,0 +1,1490 @@
+---
+title: "Financial Data Exploration"
+output: html_document
+---
+###by Jiew Wan Tan 
+#### 19th June 2016
+
+```{r global_options, include=TRUE}
+knitr::opts_chunk$set(fig.width=12, fig.height=8, fig.path='Figs/', echo=FALSE, 
+                      warning=FALSE, message=FALSE)
+
+```
+
+<br />This project explores the behavior and inter-relationships among different financial assets and indices. All data are time series data.  
+
+Financial and economic data are abundant and up-to-date. Correlations, causation and any form of relationships among indices, asset classes and instruments have always exist. As much as the complexity of the relationships are fascinating for data analysis, they are constantly in flux too as market condition change. It makes them challenging as well as irresistable to study. Financial time series are available from as short as 1 minute period. For uniformity, this exercise adopt daily time series and they are compiled into a csv file: dollar.csv, from 4th Jan 1995 to the second week of June 2016, a 20 years period. Since not all markets the assets trade in are open everyday (some markets open while the other are closed), we will see missing values among the datasets. In this case, they are omitted. 
+
+We are looking at dollar index, S&P500 index, gold, brent oil, treasury bonds at different maturities, LIBOR at different maturites, effective Fed fund rate, interest rate spreads and volatility index. Please note that treasury bond and T-bill are used interchangeably throughout this report, they actually mean the same instrument type. 
+
+Ther purpose in this exploration is the understand relationships. If the exploration found useful relationships, it can be used to generate actionable trading signal for algorithmic trading. For this reason, we are particularly interested in dollar Index and the Standard & Poor 500 index (S&P500) as there are easily a few popular instruments derived from these indices. 
+
+<br />
+The function to calculate and display correlation coefficient on the plots:
+<br />
+```{r}
+corr_eqn <- function(x,y, digits = 2) {
+  corr_coef <- round(cor(x, y, use='complete.obs'), digits = digits)
+  paste("italic(r) == ", corr_coef)
+}
+```
+
+```{r}
+setwd("/Users/jiewwan/Downloads")
+library(ggplot2) 
+require(ggthemes)
+library(grid)
+library(gridExtra)
+require(scales)
+require(gtable)
+require(lattice)
+library(GGally)
+library(zoo)
+library(timeSeries)
+```
+
+<br />
+1. Data loading, all data are cleaned and saved in a file: dollar.csv. <br />
+2. Convert date field to date format readable by R. <br />
+3. Setting the range of date to explore. <br />
+4. Summary of data.
+<br />
+```{r}
+usd<- read.csv('dollar.csv')
+date <- as.Date(usd$DATE, "%m/%d/%Y")
+xlimit = xlim(as.Date("01/04/1995", "%m/%d/%Y"),
+              as.Date("06/14/2016", "%m/%d/%Y"))
+```
+```{r}
+summary(usd)
+```
+```{r}
+head(usd)
+```
+<br />
+<br />
+<br />
+
+##Distribution & Time Series Characteristics for Dollar Index
+
+ <br />
+The dollar index has been ranging between 80 to 140 over the past twenty year. Now hovering around 121, it is on the higher end of the range. From the historgram, it has a weak binomial distribution. So it is commonly seen to be ranging around 100 and 120. Its uptrend pathway is generally steeper than downtrend. The last 8 years has seen 2 uptrends that lasted 2-3 years, whereas the the uptrend before that took about 7 years. The 3 uptrends happened during the late nineties, the late 2000s and the early to mid 2010s.  <br /> 
+
+<br />
+In all following historgrams, means are marked with red lines, 25% and 75% quantiles are marked with yellow lines. 
+<br />
+
+
+```{r,fig.width=14,fig.height=5}
+a <- ggplot(usd, aes(dollar_index))+
+  geom_histogram(binwidth = 1)+
+  ggtitle("Histogram for Dollar Index")+
+  xlab("Trade Weighted USD Index: Broad")+
+  ylab("Count")+
+  geom_vline(aes(xintercept=mean(dollar_index, na.rm=T)), color="red", 
+             linetype="dashed", size=0.8)+
+  geom_vline(aes(xintercept=quantile(dollar_index, c(0.25), na.rm=T)), 
+             color="yellow", linetype="dashed", size=0.6)+
+  geom_vline(aes(xintercept=quantile(dollar_index, c(0.75), na.rm=T)), 
+             color="yellow", linetype="dashed", size=0.6)  
+
+b <- ggplot(usd, aes(x=date, y=dollar_index, group=1))+
+  ggtitle("Line Plot for Dollar Index")+
+  geom_line(colour="darkgreen")+
+  xlab("Year") +
+  ylab("Dollar Index")
+
+y <- arrangeGrob(a, ncol=1)
+z <- arrangeGrob(b, ncol=1)
+
+grid.arrange(y, z, ncol=2)
+```
+<br />
+<br />
+<br />
+
+##Distribution & Time Series Characteristics for S&P500
+
+ <br />
+The S&P500 index has a normal distribution. 
+We can observe that at some point of time, the dollar index correlates with the S&P500. In most other time, it propably relates more to other factors. The attraction of capital to the US capital market, part of it contributed by the stock markets (which the S&P500 tracks) should also contributes to USD demand and hence its uptrend. Though, this correlation could be hard to catch and both the dollar and stock markets are huge market with global participants' interactions. There are just too many causations in their movements. The major causes are trade and capital flow, central banker's manupulations. Naturally, when most participants are driving on the same cause at the same period, a trend is set for years. 
+<br />
+
+```{r,fig.width=14,fig.height=5}
+a <- ggplot(usd, aes(SP500))+
+  ggtitle("Histogram for S&P500 Index")+
+  xlab("S&P500")+
+  ylab("Count")+
+  geom_histogram(binwidth =30)+
+  geom_vline(aes(xintercept=mean(SP500, na.rm=T)),  
+               color="red", linetype="dashed", size=0.8)+
+  geom_vline(aes(xintercept=quantile(SP500, c(0.25), type = 1, na.rm=T)), 
+             color="yellow", linetype="dashed", size=0.6)+
+  geom_vline(aes(xintercept=quantile(SP500, c(0.75), type = 1, na.rm=T)), 
+             color="yellow", linetype="dashed", size=0.6)
+
+b <- ggplot(usd, aes(x=date, y=SP500, group=1))+
+  ggtitle("Line Plot for S&P 500 Index")+
+  geom_line(colour="darkgreen")+
+  xlab("Year") +
+  ylab("S&P500")
+y <- arrangeGrob(a, ncol=1)
+z <- arrangeGrob(b, ncol=1)
+grid.arrange(y, z, ncol=2)
+
+```
+<br />
+<br />
+<br />
+
+##Distribution & Time Series Characteristics for effective Fed fund rate
+
+<br />
+The EFFR has an unnatural, somewhat skewed distribution. We notice a large number of distribution concentrates in the 0.xx region. This is an unnatural cause of Federal reserve massive quantitative easing program that suppress interest rate at 0.25-0.5 since the subprime financial crisis in 2008. However, it is expected to move gradually.  
+<br />
+
+```{r,fig.width=14,fig.height=5}
+a <- ggplot(usd, aes(EFFR))+
+  ggtitle("Histogram for EFFR")+
+  xlab("EFFR")+
+  ylab("Count")+
+  geom_histogram(binwidth =0.05)+
+  geom_vline(aes(xintercept=mean(EFFR, na.rm=T)),  
+               color="red", linetype="dashed", size=0.8)+
+  geom_vline(aes(xintercept=quantile(EFFR, c(0.25), type = 1, na.rm=T)), 
+             color="yellow", linetype="dashed", size=0.6)+
+  geom_vline(aes(xintercept=quantile(EFFR, c(0.75), type = 1, na.rm=T)), 
+             color="yellow", linetype="dashed", size=0.6)
+
+b <- ggplot(usd, aes(x=date, y=EFFR, group=1))+
+  ggtitle("Line Plot for EFFR")+
+  geom_line(colour="darkgreen")+
+  xlab("Year") +
+  ylab("EFFR")
+y <- arrangeGrob(a, ncol=1)
+z <- arrangeGrob(b, ncol=1)
+grid.arrange(y, z, ncol=2)
+
+```
+<br />
+<br />
+<br />
+
+##Distribution & Time Series Characteristics for Gold
+
+
+ <br />
+ Gold is considered a commodity as well as a safe haven asset. It has enjoyed a long period of uptrend when interest rates have been set to exceptionally low. Sometime in early 2013, market has expectation for Fed to raise interest rate, as such the begin of gold downtrend. In the recent months, despite the backdrop of Fed's rate rise, negative interest rates are seen in major economies such as Europe and Japan while emerging markets growth weakens. Gold has seen revival due to its safe asset status. So we can assume that gold has a negative correlation with interest rates and a positive correlation with risk sentiment. 
+<br />
+
+```{r,fig.width=14,fig.height=5}
+a <- ggplot(usd, aes(gold))+
+  ggtitle("Histogram for Gold")+
+  xlab("Gold")+
+  ylab("Count")+
+  geom_bar(binwidth =30)+
+  geom_vline(aes(xintercept=mean(gold, na.rm=T)),  
+               color="red", linetype="dashed", size=0.8)+
+  geom_vline(aes(xintercept=quantile(gold, c(0.25), type = 1, na.rm=T)), 
+             color="yellow", linetype="dashed", size=0.6)+
+  geom_vline(aes(xintercept=quantile(gold, c(0.75), type = 1, na.rm=T)), 
+             color="yellow", linetype="dashed", size=0.6)
+
+b <- ggplot(usd, aes(x=date, y=gold, group=1))+
+  ggtitle("Line Plot for Gold")+
+  geom_line(colour="darkgreen")+
+  xlab("Year") +
+  ylab("Gold")
+y <- arrangeGrob(a, ncol=1)
+z <- arrangeGrob(b, ncol=1)
+grid.arrange(y, z, ncol=2)
+```
+<br />
+<br />
+<br />
+
+##Distribution & Time Series Characteristics for Brent Crude oil
+
+<br />
+<br />
+ Oil is a commodity asset. What contributes to its price are more on political, economical and environmental factors. Its histogram is somewhat skewed. the past ten years has been extremely volatile for oil. 
+<br />
+```{r,fig.width=14,fig.height=5}
+a <- ggplot(usd, aes(BRENTOIL))+
+  ggtitle("Histogram for Brent Crude Oil")+
+  xlab("Brent Crude Oil")+
+  ylab("Count")+
+  geom_bar(binwidth =2)+
+  geom_vline(aes(xintercept=mean(BRENTOIL, na.rm=T)),  
+               color="red", linetype="dashed", size=0.8)+
+  geom_vline(aes(xintercept=quantile(BRENTOIL, c(0.75), type = 1, na.rm=T)), 
+             color="yellow", linetype="dashed", size=0.6)+
+  geom_vline(aes(xintercept=quantile(BRENTOIL, c(0.75), type = 1, na.rm=T)), 
+             color="yellow", linetype="dashed", size=0.6)
+
+b <- ggplot(usd, aes(x=date, y=BRENTOIL, group=1))+
+  ggtitle("Line Plot for Brent  Crude Oil")+
+  geom_line(colour="darkgreen")+
+  xlab("Year") +
+  ylab("Brent Crude Oil")
+y <- arrangeGrob(a, ncol=1)
+z <- arrangeGrob(b, ncol=1)
+grid.arrange(y, z, ncol=2)
+```
+<br />
+<br />
+<br />
+
+##Distribution Characteristics for VIX, High yield bond spread and TED Spread
+
+<br />
+ VIX is an Index, TED spread is the difference between interbank loan interest rate and short term T-bill rate, High yield spread is the rates difference between risky and low risk bonds. All can be used as gauge for risk sentiment. The skewed histograms shows that most of the time , market sentiment is calm with occassional risk aversion sentiment. 
+<br />
+```{r,fig.width=15,fig.height=5}
+a <- ggplot(usd, aes(VIX))+
+  ggtitle("Histogram for VIX")+
+  xlab("VIX")+
+  ylab("Count")+
+  geom_bar(binwidth =1)+
+  geom_vline(aes(xintercept=mean(VIX, na.rm=T)),  
+               color="red", linetype="dashed", size=0.8)+
+  geom_vline(aes(xintercept=quantile(VIX, c(0.25), type = 1, na.rm=T)), 
+             color="yellow", linetype="dashed", size=0.6)+
+  geom_vline(aes(xintercept=quantile(VIX, c(0.75), type = 1, na.rm=T)),
+             color="yellow", linetype="dashed", size=0.6)
+
+
+b <- ggplot(usd, aes(TED_Spread))+
+  ggtitle("Histogram for TED Spread")+
+  xlab("TED Spread")+
+  ylab("Count")+
+  geom_bar(binwidth =0.05)+
+  geom_vline(aes(xintercept=mean(TED_Spread, na.rm=T)),  
+               color="red", linetype="dashed", size=0.8)+
+  geom_vline(aes(xintercept=quantile(TED_Spread, c(0.25), type = 1, na.rm=T)), 
+             color="yellow", linetype="dashed", size=0.6)+
+  geom_vline(aes(xintercept=quantile(TED_Spread, c(0.75), type = 1, na.rm=T)), 
+             color="yellow", linetype="dashed", size=0.6)
+
+c <- ggplot(usd, aes(hy_bondspread))+
+  ggtitle("Histogram for High yield bond spread")+
+  xlab("High yield bond spread")+
+  ylab("Count")+
+  geom_bar(binwidth =0.05)+
+  geom_vline(aes(xintercept=mean(hy_bondspread, na.rm=T)),  
+               color="red", linetype="dashed", size=0.8)+
+  geom_vline(aes(xintercept=quantile(hy_bondspread, c(0.25), type = 1, na.rm=T)), 
+             color="yellow", linetype="dashed", size=0.6)+
+  geom_vline(aes(xintercept=quantile(hy_bondspread, c(0.75), type = 1, na.rm=T)), 
+             color="yellow", linetype="dashed", size=0.6)
+
+x <- arrangeGrob(a, ncol=1)
+y <- arrangeGrob(b, ncol=1)
+z <- arrangeGrob(c, ncol=1)
+grid.arrange(x, y, z, ncol=3)
+
+```
+<br />
+<br />
+<br />
+
+##Distribution Characteristics for LIBORs
+
+<br />
+<br />
+From both LIBORs and Treasury bonds' histograms, we observed that the longer maturity bonds are less skewed and more normal. The shorter term bonds' histograms look more similar to effective Fed fund rate's histogram (see above). We can attribute this to the power of Federal Reserve's market manupulation on short term interest rate, with its ultimate goal to encourage bank lending to stimulate economy. The longer term bonds are less affected by it and more by market force. 
+<br />
+```{r,fig.width=15,fig.height=10}
+a <- ggplot(usd, aes(USD1MLIBOR))+
+  xlab("1 month LIBOR")+
+  ylab(NULL)+
+  geom_bar(binwidth =0.1)+
+  geom_vline(aes(xintercept=mean(USD1MLIBOR, na.rm=T)),  
+               color="red", linetype="dashed", size=0.8)+
+  geom_vline(aes(xintercept=quantile(USD1MLIBOR, c(0.25), type = 1, na.rm=T)),
+             color="yellow", linetype="dashed", size=0.6)+
+  geom_vline(aes(xintercept=quantile(USD1MLIBOR, c(0.75), type = 1, na.rm=T)),
+             color="yellow", linetype="dashed", size=0.6)
+
+b <- ggplot(usd, aes(USD3MLIBOR))+
+  xlab("3 month LIBOR")+
+  ylab(NULL)+
+  geom_bar(binwidth =0.1)+
+  geom_vline(aes(xintercept=mean(USD3MLIBOR, na.rm=T)),  
+               color="red", linetype="dashed", size=0.8)+
+  geom_vline(aes(xintercept=quantile(USD3MLIBOR, c(0.25), type = 1, na.rm=T)), 
+             color="yellow", linetype="dashed", size=0.6)+
+  geom_vline(aes(xintercept=quantile(USD3MLIBOR, c(0.75), type = 1, na.rm=T)), 
+             color="yellow", linetype="dashed", size=0.6)
+
+c <- ggplot(usd, aes(USD6MLIBOR))+
+  xlab("6 month LIBOR")+
+  ylab(NULL)+
+  geom_bar(binwidth =0.1)+
+  geom_vline(aes(xintercept=mean(USD6MLIBOR, na.rm=T)),  
+               color="red", linetype="dashed", size=0.8)+
+  geom_vline(aes(xintercept=quantile(USD6MLIBOR, c(0.25), type = 1, na.rm=T)), 
+             color="yellow", linetype="dashed", size=0.6)+
+  geom_vline(aes(xintercept=quantile(USD6MLIBOR, c(0.75), type = 1, na.rm=T)), 
+             color="yellow", linetype="dashed", size=0.6)
+
+d <- ggplot(usd, aes(USD12MLIBOR))+
+  xlab("12 month LIBOR")+
+  ylab(NULL)+
+  geom_bar(binwidth =0.1)+
+  geom_vline(aes(xintercept=mean(USD12MLIBOR, na.rm=T)),  
+               color="red", linetype="dashed", size=0.8)+
+  geom_vline(aes(xintercept=quantile(USD12MLIBOR, c(0.25), type = 1, na.rm=T)), 
+             color="yellow", linetype="dashed", size=0.6)+
+  geom_vline(aes(xintercept=quantile(USD12MLIBOR, c(0.75), type = 1, na.rm=T)), 
+             color="yellow", linetype="dashed", size=0.6)
+
+w <- arrangeGrob(a, ncol=1)
+x <- arrangeGrob(b, ncol=1)
+y <- arrangeGrob(c, ncol=1)
+z <- arrangeGrob(d, ncol=1)
+grid.arrange(w,x, y, z, ncol=2)
+
+```
+<br />
+<br />
+<br />
+
+##Distribution Characteristics for Treasure Bonds
+
+<br />
+<br />
+```{r,fig.width=15,fig.height=15}
+a <- ggplot(usd, aes(USD1MTCMR))+
+  xlab("1 month T-bill")+
+  ylab(NULL)+
+  geom_bar(binwidth =0.1)+
+  geom_vline(aes(xintercept=mean(USD1MTCMR, na.rm=T)),  
+               color="red", linetype="dashed", size=0.8)+
+  geom_vline(aes(xintercept=quantile(USD1MTCMR, c(0.25), type = 1, na.rm=T)),
+             color="yellow", linetype="dashed", size=0.6)+
+  geom_vline(aes(xintercept=quantile(USD1MTCMR, c(0.75), type = 1, na.rm=T)),
+             color="yellow", linetype="dashed", size=0.6)
+
+b <- ggplot(usd, aes(USD3MTCMR))+
+  xlab("3 month T-bill")+
+  ylab(NULL)+
+  geom_bar(binwidth =0.1)+
+  geom_vline(aes(xintercept=mean(USD3MTCMR, na.rm=T)),  
+               color="red", linetype="dashed", size=0.8)+
+  geom_vline(aes(xintercept=quantile(USD3MTCMR, c(0.25), type = 1, na.rm=T)),
+             color="yellow", linetype="dashed", size=0.6)+
+  geom_vline(aes(xintercept=quantile(USD3MTCMR, c(0.75), type = 1, na.rm=T)),
+             color="yellow", linetype="dashed", size=0.6)
+
+c <- ggplot(usd, aes(USD6MTCMR))+
+  xlab("6 month T-bill")+
+  ylab(NULL)+
+  geom_bar(binwidth =0.1)+
+  geom_vline(aes(xintercept=mean(USD6MTCMR, na.rm=T)),  
+               color="red", linetype="dashed", size=0.8)+
+  geom_vline(aes(xintercept=quantile(USD6MTCMR, c(0.25), type = 1, na.rm=T)),
+             color="yellow", linetype="dashed", size=0.6)+
+  geom_vline(aes(xintercept=quantile(USD6MTCMR, c(0.75), type = 1, na.rm=T)), 
+             color="yellow", linetype="dashed", size=0.6)
+
+d <- ggplot(usd, aes(USD1YTCMR))+
+  xlab("1 year T-bill")+
+  ylab(NULL)+
+  geom_bar(binwidth =0.1)+
+  geom_vline(aes(xintercept=mean(USD1YTCMR, na.rm=T)),  
+               color="red", linetype="dashed", size=0.8)+
+  geom_vline(aes(xintercept=quantile(USD1YTCMR, c(0.25), type = 1, na.rm=T)),
+             color="yellow", linetype="dashed", size=0.6)+
+  geom_vline(aes(xintercept=quantile(USD1YTCMR, c(0.75), type = 1, na.rm=T)),
+             color="yellow", linetype="dashed", size=0.6)
+
+e <- ggplot(usd, aes(USD2YTCMR))+
+  xlab("2 year T-bill")+
+  ylab(NULL)+
+  geom_bar(binwidth =0.1)+
+  geom_vline(aes(xintercept=mean(USD2YTCMR, na.rm=T)),  
+               color="red", linetype="dashed", size=0.8)+
+  geom_vline(aes(xintercept=quantile(USD2YTCMR, c(0.25), type = 1, na.rm=T)), 
+             color="yellow", linetype="dashed", size=0.6)+
+  geom_vline(aes(xintercept=quantile(USD2YTCMR, c(0.75), type = 1, na.rm=T)), 
+             color="yellow", linetype="dashed", size=0.6)
+
+f <- ggplot(usd, aes(USD3YTCMR))+
+  xlab("3 year T-bill")+
+  ylab(NULL)+
+  geom_bar(binwidth =0.1)+
+  geom_vline(aes(xintercept=mean(USD3YTCMR, na.rm=T)),  
+               color="red", linetype="dashed", size=0.8)+
+  geom_vline(aes(xintercept=quantile(USD3YTCMR, c(0.25), type = 1, na.rm=T)),
+             color="yellow", linetype="dashed", size=0.6)+
+  geom_vline(aes(xintercept=quantile(USD3YTCMR, c(0.75), type = 1, na.rm=T)),
+             color="yellow", linetype="dashed", size=0.6)
+
+g <- ggplot(usd, aes(USD5YTCMR))+
+  xlab("5 year T-bill")+
+  ylab(NULL)+
+  geom_bar(binwidth =0.1)+
+  geom_vline(aes(xintercept=mean(USD5YTCMR, na.rm=T)),  
+               color="red", linetype="dashed", size=0.8)+
+  geom_vline(aes(xintercept=quantile(USD5YTCMR, c(0.25), type = 1, na.rm=T)), 
+             color="yellow", linetype="dashed", size=0.6)+
+  geom_vline(aes(xintercept=quantile(USD5YTCMR, c(0.75), type = 1, na.rm=T)), 
+             color="yellow", linetype="dashed", size=0.6)
+
+h <- ggplot(usd, aes(USD7YTCMR))+
+  xlab("7 year T-bill")+
+  ylab(NULL)+
+  geom_bar(binwidth =0.1)+
+  geom_vline(aes(xintercept=mean(USD7YTCMR, na.rm=T)),  
+               color="red", linetype="dashed", size=0.8)+
+  geom_vline(aes(xintercept=quantile(USD7YTCMR, c(0.25), type = 1, na.rm=T)), 
+             color="yellow", linetype="dashed", size=0.6)+
+  geom_vline(aes(xintercept=quantile(USD7YTCMR, c(0.75), type = 1, na.rm=T)), 
+             color="yellow", linetype="dashed", size=0.6)
+
+i <- ggplot(usd, aes(USD10YTCMR))+
+  xlab("10 year T-bill")+
+  ylab(NULL)+
+  geom_bar(binwidth =0.1)+
+  geom_vline(aes(xintercept=mean(USD10YTCMR, na.rm=T)),  
+               color="red", linetype="dashed", size=0.8)+
+  geom_vline(aes(xintercept=quantile(USD10YTCMR, c(0.25), type = 1, na.rm=T)),
+             color="yellow", linetype="dashed", size=0.6)+
+  geom_vline(aes(xintercept=quantile(USD10YTCMR, c(0.75), type = 1, na.rm=T)),
+             color="yellow", linetype="dashed", size=0.6)
+
+r <- arrangeGrob(a, ncol=1)
+s <- arrangeGrob(b, ncol=1)
+t <- arrangeGrob(c, ncol=1)
+u <- arrangeGrob(d, ncol=1)
+v <- arrangeGrob(e, ncol=1)
+w <- arrangeGrob(f, ncol=1)
+x <- arrangeGrob(g, ncol=1)
+y <- arrangeGrob(h, ncol=1)
+z <- arrangeGrob(i, ncol=1)
+
+grid.arrange(r,s,t,u,v,w,x,y,z, ncol=3)
+
+```
+<br />
+<br />
+<br />
+
+## Bivariate exploration of various features: Scatter plot
+
+<br />
+<br />
+We are experimenting S&P 500 and Dollar index's relationship with other features, to see if we can find any interesting correlation. 
+As for treasury bond and LIBOR, we select a few commonly use maturities from each set.
+
+All scatter plots will be fitted with linear regression or loess lines with confidence internals. When a linear association is observed, a linear regression line is plotted. If the scatter plot shows a non-linear and more complicated relationship, a loess line will be plotted instead. Correlation coefficients will also be included in all plots. The complex relationships observed in most plots reflects that the plots deserve further investigation in a different study. 
+<br />
+```{r,fig.width=15,fig.height=25}
+a <- ggplot(usd, na.rm = TRUE, aes(SP500, dollar_index))+
+  theme_igray()+
+  geom_point(alpha=1/10)+
+  geom_smooth(color="red")+
+  geom_text(x = 1750, y = 90,label = corr_eqn(usd$dollar_index,usd$SP500), 
+            parse = TRUE)
+
+b <- ggplot(usd, na.rm = TRUE, aes(dollar_index, gold))+
+  theme_igray()+
+  geom_point(alpha=1/10)+
+  geom_smooth(color="red")+
+  geom_text(x = 122, y = 1700,label = corr_eqn(usd$gold,usd$dollar_index),
+            parse = TRUE)
+
+c <- ggplot(usd, na.rm = TRUE, aes(SP500, gold))+
+  theme_igray()+
+  geom_point(alpha=1/10)+
+  geom_smooth(color="red")+
+  geom_text(x = 700, y = 1500,label = corr_eqn(usd$gold,usd$SP500),
+            parse = TRUE)
+
+d <- ggplot(usd, na.rm = TRUE, aes(SP500, BRENTOIL))+
+  theme_igray()+
+  geom_point(alpha=1/10)+
+  geom_smooth(color="red")+
+  geom_text(x = 700, y = 120,label = corr_eqn(usd$BRENTOIL,usd$SP500), 
+            parse = TRUE)
+
+e <- ggplot(usd, na.rm = TRUE, aes(dollar_index, BRENTOIL))+
+  theme_igray()+
+  geom_point(alpha=1/10)+
+  geom_smooth(method=lm, color="red")+
+  geom_text(x = 125, y = 120,label = corr_eqn(usd$dollar_index,usd$BRENTOIL),
+            parse = TRUE)
+
+f <- ggplot(usd, na.rm = TRUE, aes(dollar_index, USD12MLIBOR))+
+  theme_igray()+
+  geom_point(alpha=1/10)+
+  geom_smooth(color="red")+
+  geom_text(x = 92, y = 2,label = corr_eqn(usd$USD12MLIBOR,usd$dollar_index), 
+            parse = TRUE)
+
+g <- ggplot(usd, na.rm = TRUE, aes(SP500, USD12MLIBOR))+
+  theme_igray()+
+  geom_point(alpha=1/10)+
+  geom_smooth(color="red")+
+  geom_text(x = 1800, y = 6,label = corr_eqn(usd$USD12MLIBOR,usd$SP500),
+            parse = TRUE)
+
+h <- ggplot(usd, na.rm = TRUE, aes(dollar_index, USD3MTCMR))+
+  theme_igray()+
+  geom_point(alpha=1/10)+
+  geom_smooth(color="red")+
+  geom_text(x = 92, y = 3,label = corr_eqn(usd$dollar_index,usd$USD3MTCMR), 
+            parse = TRUE)
+
+i <- ggplot(usd, na.rm = TRUE, aes(SP500, USD3MTCMR))+
+  theme_igray()+
+  geom_point(alpha=1/10)+
+  geom_smooth(color="red")+
+  geom_text(x = 1800, y = 4,label = corr_eqn(usd$USD3MTCMR,usd$SP500), 
+            parse = TRUE)
+
+j <- ggplot(usd, na.rm = TRUE, aes(SP500, USD1YTCMR))+
+  theme_igray()+
+  geom_point(alpha=1/10)+
+  geom_smooth(color="red")+
+  geom_text(x = 1800, y = 4,label = corr_eqn(usd$USD1YTCMR,usd$SP500),
+            parse = TRUE)
+
+k <- ggplot(usd, na.rm = TRUE, aes(dollar_index, USD1YTCMR))+
+  theme_igray()+
+  geom_point(alpha=1/10)+
+  geom_smooth(color="red")+
+  geom_text(x = 92, y = 3,label = corr_eqn(usd$dollar_index,usd$USD1YTCMR),
+            parse = TRUE)
+
+l <- ggplot(usd, na.rm = TRUE, aes(SP500, USD3YTCMR))+
+  theme_igray()+
+  geom_point(alpha=1/10)+
+  geom_smooth(color="red")+
+  geom_text(x = 1800, y = 4,label = corr_eqn(usd$USD3YTCMR,usd$SP500), 
+            parse = TRUE)
+
+m <- ggplot(usd, na.rm = TRUE, aes(dollar_index, USD3YTCMR))+
+  theme_igray()+
+  geom_point(alpha=1/10)+
+  geom_smooth(color="red")+
+  geom_text(x = 120, y = 7,label = corr_eqn(usd$dollar_index,usd$USD3YTCMR), 
+            parse = TRUE)
+
+n <- ggplot(usd, na.rm = TRUE, aes(SP500, USD10YTCMR))+
+  theme_igray()+
+  geom_point(alpha=1/10)+
+  geom_smooth(color="red")+
+  geom_text(x = 1800, y = 6,label = corr_eqn(usd$USD10YTCMR,usd$SP500),
+            parse = TRUE)
+
+o <- ggplot(usd, na.rm = TRUE, aes(dollar_index, USD10YTCMR))+
+  theme_igray()+
+  geom_point(alpha=1/10)+
+  geom_smooth(color="red")+
+  geom_text(x = 92, y = 4,label = corr_eqn(usd$dollar_index,usd$USD10YTCMR), 
+            parse = TRUE)
+
+grid.arrange(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o, ncol=3)
+```
+<br />
+<br />
+<br />
+
+## Bivariate exploration of interest rate spreads: Scatter plot
+
+<br />
+<br />
+
+```{r,fig.width=14,fig.height=10}
+a <- ggplot(usd, na.rm = TRUE, aes(SP500, TED_Spread))+
+  ggtitle("S&P500 vs TED Spread")+
+  theme_igray()+
+  geom_point(alpha=1/10)+
+  geom_smooth(method=lm, color="red")+
+  geom_text(x = 1800, y = 3.5,label = corr_eqn(usd$TED_Spread,usd$SP500),
+            parse = TRUE)
+
+b <- ggplot(usd, na.rm = TRUE, aes(dollar_index, TED_Spread))+
+  ggtitle("Dollar Index vs TED Spread")+
+  theme_igray()+
+  geom_point(alpha=1/10)+
+  geom_smooth(method=lm, color="red")+
+  geom_text(x = 122, y = 3,label = corr_eqn(usd$dollar_index,usd$TED_Spread),
+            parse = TRUE)
+
+c <- ggplot(usd, na.rm = TRUE, aes(SP500, hy_bondspread))+
+  ggtitle("S&P500 vs High yield bond spread")+
+  theme_igray()+
+  geom_point(alpha=1/10)+
+  geom_smooth(color="red")+
+  geom_text(x = 1800, y = 15,label = corr_eqn(usd$hy_bondspread,usd$SP500),
+            parse = TRUE)
+
+d <- ggplot(usd, na.rm = TRUE, aes(dollar_index, hy_bondspread))+
+  ggtitle("Dollar Index vs High yield bond spread")+
+  theme_igray()+
+  geom_point(alpha=1/10)+
+  geom_smooth(color="red")+
+  geom_text(x = 122, y = 15,label = corr_eqn(usd$dollar_index,usd$hy_bondspread),
+            parse = TRUE)
+
+grid.arrange(a,b,c,d, ncol=2)
+```
+<br />
+<br />
+<br />
+
+## Bivariate exploration of gold: Scatter plot
+
+<br />
+Gold and oil, in contrast have strong negative correlation with most other assets, espciallly interest rate. Gold is viewed a safe haven in the market, during the time of market stress, together with treasury bonds, gold price will be bid up by investor rushing for safety. When bond price is up, causing its yield to drop (a fixed interest rate bond's yield will be less attractive when it price goes up), as such gold price is highy correlated with bond price and has strong negative correlation with bond yield. Before we proceed further to investigate risk and interest rate-related assets , let's look at gold price behavior with 3 assets:
+<br />
+
+```{r,fig.width=15,fig.height=5}
+a <- ggplot(usd, na.rm = TRUE, aes(gold, TED_Spread))+
+  ggtitle("Gold vs TED Spread")+
+  theme_igray()+
+  geom_point(alpha=1/10)+
+  geom_smooth(method=lm, color="red")+
+  geom_text(x = 1500, y = 3,label = corr_eqn(usd$gold,usd$TED_Spread), 
+            parse = TRUE)
+  
+
+b <- ggplot(usd, na.rm = TRUE, aes(gold, USD3MLIBOR))+
+  ggtitle("Gold vs 3 month LIBOR")+
+  theme_igray()+
+  geom_point(alpha=1/10)+
+  geom_smooth(method=lm, color="red")+
+  geom_text(x = 1500, y = 5,label = corr_eqn(usd$gold,usd$USD3MLIBOR),
+            parse = TRUE)
+
+c <- ggplot(usd, na.rm = TRUE, aes(gold, USD10YTCMR))+
+  ggtitle("Gold vs 10 year treasury bond")+
+  theme_igray()+
+  geom_point(alpha=1/10)+
+  geom_smooth(method=lm, color="red")+
+  geom_text(x = 1500, y = 6,label = corr_eqn(usd$gold,usd$USD10YTCMR), 
+            parse = TRUE)
+
+grid.arrange(a,b,c, ncol=3)
+
+```
+<br />
+<br />
+<br />
+
+##Correlation Matrix: An Overview
+
+<br />
+Since we have many features, a correlation matrix will be handy. 
+We notice that the two features: S&P 500 and dollar index we are studying here do not have obvious correlationship with most other assets. Particularly dollar, that imply its complexity with other assets in the markets. 
+<br />
+
+```{r,fig.width=16,fig.height=16}
+ggcorr(usd[, -1], label = TRUE, nbreaks = 8, label_size = 6, label_round = 1, 
+       label_color = "white",legend.position = "right", legend.size = 18, 
+       low = "firebrick1", high = "deepskyblue4")
+
+```
+<br />
+<br />
+<br />
+
+## VIX in Dollar Index and S&P500 distribution: Histogram
+
+<br />
+Volatity index (VIX) is known to be the fear index. When market is fearful, the VIX reflects that. VIX is currently moving between mid to late teens, not particularly fearful. It is when it has gone above 30. From the histograms below, we can tell most of the time the markets are not fearful. Though, as we see from S&P0500's histogram, markets are fearful when they are at the lower end: < 1000 and between 105 to 113 for dollar index. 
+ <br />
+ 
+```{r,fig.width=14,fig.height=4}
+
+a <- ggplot(usd, aes(dollar_index, fill = cut(VIX,6))) +
+  ggtitle("Dollar Index stacked with VIX")+
+  geom_bar(binwidth = 1)+
+  theme_solarized(light = FALSE)+
+  scale_fill_brewer(palette = "YlOrRd")
+
+b <-ggplot(usd, aes(SP500, fill = cut(VIX,6))) +
+  ggtitle("S&P500 stacked with VIX")+
+  geom_bar(binwidth = 20)+
+  theme_solarized(light = FALSE)+
+  scale_fill_brewer(palette = "YlGnBu") 
+grid.arrange(a, b, ncol=2)
+```
+<br />
+<br />
+<br />
+
+## VIX in Dollar Index and S&P500 distribution: Scatter plot
+
+<br />
+The scatterplots show Dollar index & S&P500 relationships with VIX. There are weak positive (dollar) and weak negative correlations (S&P500). 
+<br />
+<br />
+```{r,fig.width=14,fig.height=7}
+p <- ggplot(usd, na.rm = TRUE, aes(VIX, dollar_index))
+a <-p + ggtitle("Scatter Plot of daily data for Dollar Index vs VIX")+
+  theme_igray()+
+  xlab("VIX") +
+  ylab("Dollar Index")+ 
+  geom_point(alpha=1/8)+
+  geom_smooth(method=lm, color="red")+
+  geom_text(x = 60, y = 95,label = corr_eqn(usd$VIX,usd$dollar_index), 
+            parse = TRUE)
+
+q <- ggplot(usd, na.rm = TRUE, aes(VIX, SP500))
+b <-q + ggtitle("Scatter Plot of daily data for SP500 vs VIX")+
+  theme_igray()+
+  xlab("VIX") +
+  ylab("S&P 500")+ 
+  geom_point(alpha=1/8)+
+  geom_smooth(method=lm, color="red")+
+  geom_text(x = 60, y = 1500,label = corr_eqn(usd$VIX,usd$SP500), parse = TRUE)
+  
+
+grid.arrange(a, b, ncol=2)
+```
+<br />
+<br />
+<br />
+
+# Dollar Index & S&P500 behavior in risk sentiment
+
+ <br />
+TED spread is the difference between the interest rates on interbank loans and on short-term U.S. government debt ("T-bills").  It can be used as a gauge of risk sentiments. (See note) From the scatterplots, we notice that when VIX is high, TED spread tends to be high too. 
+
+<br />
+Note: TED is an acronym formed from T-Bill and ED (Eurodollar, LIBOR), the ticker symbol for the Eurodollar futures contract. TED spread is the difference between the three-month LIBOR and the three-month T-bill interest rate. The TED spread is an indicator of perceived credit risk in the general economy,since T-bills are considered risk-free while LIBOR reflects the credit risk of lending to commercial banks. An increase in the TED spread is a sign that lenders believe the risk of default on interbank loans (also known as counterparty risk) is increasing. Interbank lenders, therefore, demand a higher rate of interest, or accept lower returns on safe investments such as T-bills. When the risk of bank defaults is considered to be decreasing, the TED spread decreases.
+<br />
+ 
+```{r,fig.width=14,fig.height=7}
+
+a <- ggplot(usd, na.rm = TRUE, aes(VIX, dollar_index))+ 
+  ggtitle("Dollar Index vs VIX colored by TED Spread")+
+  xlab("VIX") +
+  ylab("Dollar Index")+ 
+  geom_point(alpha=1/3, aes(colour=TED_Spread)) +theme_tufte() +
+  scale_colour_gradient(limits=c(min(usd$TED_Spread), max(usd$TED_Spread)), 
+                        high='#ff3300', low='#3399ff')+
+  theme_igray()+
+  geom_smooth(method=lm, color="darkgreen")+
+  geom_text(x = 50, y = 93,label = corr_eqn(usd$VIX,usd$dollar_index),
+            parse = TRUE) 
+
+b <- ggplot(usd, aes(VIX, SP500))+ 
+  ggtitle("S&P500 vs VIX colored by TED Spread")+
+  xlab("VIX") +
+  ylab("S&P500")+ 
+  geom_point(alpha=1/3, aes(colour=TED_Spread)) +theme_tufte() +
+  scale_colour_gradient(limits=c(min(usd$TED_Spread), max(usd$TED_Spread)), 
+                        high='#ff3300', low='#3399ff')+
+  theme_igray()+
+  geom_smooth(method=lm, color="darkgreen")+
+  geom_text(x = 45, y = 500,label = corr_eqn(usd$VIX,usd$SP500), parse = TRUE)
+grid.arrange(a, b, ncol=2)
+```
+
+<br />
+<br />
+<br />
+
+#Correlations of risk sentiment indicators
+
+ <br />
+We know that risk sentiments plays a significant part in market behavior, the analysis thus far has shown how it is reflected in different asset class. We progress further by adding a variable into the bivariate plots, making multi-variate analysis. First, by reaffirming it with three risk indicator behave with each other. See notes about high yield bond spread:  https://research.stlouisfed.org/fred2/series/BAMLH0A0HYM2 for further info about high yield bond spread. 
+
+We notice from all three scatter plots that VIX, TED Spread & high yield bond spread are very much correlated. Their indiviual line charts also show that they spiked up around the same period, or better say they response to market sentiment similarly. 
+ <br />
+ <br />
+```{r,fig.width=15,fig.height=10}
+a <- ggplot(usd, na.rm = TRUE, aes(x=VIX, y=TED_Spread))+
+  ggtitle("TED Spread vs VIX")+
+  theme_igray()+
+  xlab("VIX") +
+  ylab("TED Spread")+ 
+  geom_point(alpha=1/10)+
+  coord_trans(y ='sqrt')+
+  geom_smooth(method=lm, color="red")+
+  geom_text(x = 65, y = 0.5,label = corr_eqn(usd$VIX,usd$TED_Spread), 
+            parse = TRUE)
+
+b <- ggplot(usd, na.rm = TRUE, aes(x=VIX, y=hy_bondspread))+
+  ggtitle("High Yield bond spread vs VIX")+
+  theme_igray()+
+  xlab("VIX") +
+  ylab("High Yield bond spread")+ 
+  geom_point(alpha=1/10) +
+  coord_trans(y ='sqrt')+
+  geom_smooth(method=lm, color="red")+
+  geom_text(x = 65, y = 10,label = corr_eqn(usd$VIX,usd$hy_bondspread), 
+            parse = TRUE)
+
+c <- ggplot(usd, na.rm = TRUE, aes(x=TED_Spread, y=hy_bondspread))+
+  ggtitle("High Yield bond spread vs TED Spread")+
+  theme_igray()+
+  xlab("TED_Spread") +
+  ylab("High Yield bond spread")+ 
+  geom_point(alpha=1/10) +
+  coord_trans(y ='sqrt')+
+  geom_smooth(method=lm, color="red")+
+  geom_text(x = 3.5, y = 7.5,label = corr_eqn(usd$TED_Spread,usd$hy_bondspread), 
+            parse = TRUE)
+
+
+d <- qplot(date, TED_Spread, data=usd, geom="line", colour="navy")+
+  theme_igray()+
+  theme(legend.position="none")+
+  ylab("TED Spread")
+e <- qplot(date, VIX, data=usd, geom="line", colour="navy")+
+  theme_igray()+
+  theme(legend.position="none")+
+  ylab("VIX")
+f <- qplot(date, hy_bondspread, data=usd, geom="line", colour="navy")+ 
+  theme_igray()+
+  theme(legend.position="none")+
+  ylab("High Yield Bond Spread")
+
+grid.arrange(a, b, c, d, e, f, ncol=3)
+```
+<br />
+<br />
+<br />
+
+## More on other asset classes behavior with VIX
+
+ <br />
+We notice that dollar has negative correlationships with gold and oil. That makes sense as both are denominated by dollar. When dollar goes up, they have to go down. However, there seems to be more between Dollar and gold. 
+ <br />
+Dollar and effective Fed fund rate (EFFR) has mild correlation as EFFR is somewhat manipulated by Federal Reserves (the United States' central bank). 
+ <br />
+ S&P500 is inversely correlated to High yield bond spread, this explains the stock market is down when risk sentiment is high, VIX color in the plot reaffirms that too. 
+<br />The dollar index has a non linear association with high yield spread, which probably worth looking further into an equation that explains their relationship.  VIX's behavior in them is mixed. 
+ <br />
+The dollar index and S&P 500 looks to have a very complicated relationship. It will take some quantative analysis work to derive a method to explain it. 
+<br />
+  
+```{r,fig.width=15,fig.height=10}
+a <- ggplot(usd, na.rm = TRUE, aes(EFFR, TED_Spread)) + 
+  ggtitle("TED Spread vs EFFR by VIX")+
+  theme_igray()+
+  xlab("Effective Fed Fund Rate") +
+  ylab("TED Spread")+ 
+  geom_point(alpha=1/4, aes(colour=VIX))+ 
+  theme_igray()+
+  scale_colour_gradient(limits=c(9, 81), high='#ff3300', low='#3399ff')+
+  geom_smooth(method=lm, color="darkgreen")+
+  geom_text(x = 6, y = 4,label = corr_eqn(usd$EFFR,usd$TED_Spread), 
+            parse = TRUE)
+
+b <- ggplot(usd, na.rm = TRUE, aes(gold, dollar_index))+ 
+  ggtitle("Dollar vs Gold by VIX")+
+  theme_igray()+
+  xlab("Gold")+
+  ylab("Dollar Index")+
+  geom_point(alpha=1/4, aes(colour=VIX))+
+  theme_igray()+
+  scale_colour_gradient(limits=c(9, 81), high='#ff3300', low='#3399ff')+
+  geom_smooth(method=lm, color="darkgreen")+
+  geom_text(x = 1200, y = 90,label = corr_eqn(usd$gold,usd$dollar_index), 
+            parse = TRUE)
+
+c <- ggplot(usd, na.rm = TRUE, aes(SP500, dollar_index))+ 
+  ggtitle("Dollar Index vs S&P 500 Index by VIX")+
+  theme_igray()+
+  xlab("S&P 500 Index") +
+  ylab("Dollar Index") +
+  geom_point(alpha=1/4, aes(colour=VIX)) + theme_igray()+
+  scale_colour_gradient(limits=c(9, 81), high='#ff3300', low='#3399ff')+
+  geom_smooth(color="darkgreen")+
+  geom_text(x = 1500, y = 90,label = corr_eqn(usd$dollar_index,usd$SP500), 
+            parse = TRUE)
+
+d <- ggplot(usd, na.rm = TRUE, aes(BRENTOIL, dollar_index))+ 
+  ggtitle("Dollar Index vs Brent by VIX")+
+  theme_igray()+
+  xlab("Brent Crude Oil") +
+  ylab("Dollar Index") + 
+  geom_point(alpha=1/4, aes(colour=VIX))+ 
+  theme_igray()+
+  scale_colour_gradient(limits=c(9, 81), high='#ff3300', low='#3399ff')+
+  geom_smooth(method=lm, color="darkgreen")+
+  geom_text(x = 100, y = 125,label = corr_eqn(usd$BRENTOIL,usd$dollar_index), 
+            parse = TRUE)
+
+e <- ggplot(usd, na.rm = TRUE, aes(hy_bondspread, dollar_index))+ 
+  ggtitle("Dollar Index vs HY Spread by VIX")+
+  theme_igray()+
+  xlab("BofA Merrill Lynch US High Yield Option-Adjusted Spread")+
+  ylab("Dollar Index")+ 
+  geom_point(alpha=1/3, aes(colour=VIX))+
+  theme_igray()+
+  scale_colour_gradient(limits=c(9, 81), high='#ff3300', low='#3399ff')+
+  geom_smooth(color="darkgreen")+
+  geom_text(x = 12, y = 90,label = corr_eqn(usd$hy_bondspread,usd$dollar_index), 
+            parse = TRUE)
+
+f <- ggplot(usd, na.rm = TRUE, aes(hy_bondspread, SP500))+ 
+  ggtitle("S&P500 vs HY Spread by VIX")+
+  theme_igray()+
+  xlab("BofA Merrill Lynch US High Yield Option-Adjusted Spread") +
+  ylab("S&P 500 Index") +
+  geom_point(alpha=1/3, aes(colour=VIX))+
+  theme_igray()+
+  scale_colour_gradient(high='#ff3300', low='#3399ff')+
+  geom_smooth(method=lm, color="darkgreen")+
+  geom_text(x = 12, y = 500,label = corr_eqn(usd$hy_bondspread,usd$SP500), 
+            parse = TRUE)
+
+grid.arrange(a, b, c, d, e, f, ncol=3)
+```
+<br />
+<br />
+<br />
+
+## Final Plots: Characteristics of fixed income assets (bonds) of different maturities
+
+<br />
+
+The plots reveals that interest rate, their spread among short and long term maturities plays a part in risk sentiment. They have also shown coherent and consistent behavior from the plots above. Given market is very much affected by risk sentiment, we should see if these can help predict movement of S&P500 and the dollar.
+
+Having looked at how risk sentiment plays out in different asset classes, we now look into how it is reflected in treasuries and LIBORs of varied maturities or better how bonds and LIBORs reflect that.  Treasury bonds are viewed as a safe asset (risk free assets) in the market. When risk sentiment is high or imminent, the bonds market is likely the earliest to reflect that as investors rush for safe havens. When demand bids up bond price, naturally, their yields drop. LIBORs are interbank rates:  borrowing between banks. When interbank borrowing market is stressed, the banks wil bid up LIBOR rates. 
+We can observe form the boxplot that longer maturity bonds tend to have higher yields, and that shorter maturity bonds tend to be more volatile. The one month treasury bond even has a bunch of outliers. 
+
+<br />
+<br />
+```{r,fig.width=16,fig.height=7}
+
+box<-data.frame(EFFR=usd$EFFR,
+USD1MLIBOR=usd$USD1MLIBOR,
+USD3MLIBOR=usd$USD3MLIBOR,
+USD6MLIBOR=usd$USD6MLIBOR,
+USD12MLIBOR=usd$USD12MLIBOR,
+USD1MTCMR=usd$USD1MTCMR,
+USD3MTCMR=usd$USD3MTCMR,
+USD6MTCMR=usd$USD6MTCMR,
+USD1YTCMR=usd$USD1YTCMR,
+USD2YTCMR=usd$USD2YTCMR,
+USD3YTCMR=usd$USD3YTCMR,
+USD5YTCMR=usd$USD5YTCMR,
+USD7YTCMR=usd$USD7YTCMR,
+USD10YTCMR=usd$USD10YTCMR)
+boxplot(box, las = 2, 
+        main="Rates of Fed Fund, LIBORS & Treasury Bonds", 
+        par(mar=c(10,2,2,0)),
+        col = c("#FF9900","#CCFF00","#99FF00","#33FF00","#006600","#FFCCFF",
+                "#CCCCFF","#9999FF","#6666FF","#3333FF","#0000FF","#0000CC",
+                "#000099", "#000066"),
+        names = c("Effective Fed Fund Rate","1 Month LIBOR","3 Month LIBOR",
+                  "6 Month LIBOR", "1 Year LIBOR","1 Month T-bond",
+                  "3 Month T-bond","6 Month T-bond","1 Year T-bond", 
+                  "2 Year T-bond","3 Year T-bond","5 Year T-bond",
+                  "7 Year T-bond","10 Year T-bond"))
+
+```
+<br />
+<br />
+<br />
+
+##Final Plot 1: Behavior of LIBOR and Treasury of the same maturity
+
+<br />
+Following the findings on risk, rates and spread, we sum it up by looking at TED Spread in action: how LIBOR and Treasury bond of the same matuirties relate to each other and together their response to risk sentiment.
+
+We observe that LIBORs and treasury bonds are very correlated at all 4 shared maturities, when their rates go to the upper end, market tends to be in above average stress, moderately high risk sentiment. It is the extreme stressful market condition that distort their correlationship, LIBOR rates went high while treasury bonds stick to their lowest range, particularly the shorter maturity bonds. This very much explains the characteristic difference between LIBOR and treasury markets mentioned above. 
+
+This is an important finding so far in this exploration. When trader see a tendency of bond rates of the same maturity diversify from each other and both rates are not at their high end, the trader should take note. Though this finding has to be complimented by another perspective: time. Because it is enough to know the correlation and distribution. We should know who is leading and who is lagging to have an actionable signal in trading. 
+
+<br />
+<br />
+
+```{r,fig.width=14,fig.height=10}
+a <- ggplot(usd, aes(USD1MLIBOR, USD1MTCMR))+
+  ggtitle("1 Month T-bill vs LIBOR by VIX")+
+  geom_point(alpha=1/3, aes(colour=VIX))+
+  scale_colour_gradient(limits=c(min(usd$VIX), max(usd$VIX)), high='#ff3300',
+                        low='#3399ff')+
+  theme_igray()+
+  geom_text(x = 1.8, y = 4,label = corr_eqn(usd$USD1MTCMR,usd$USD1MLIBOR),
+            parse = TRUE)
+
+b <- ggplot(usd, aes(USD3MLIBOR, USD3MTCMR))+
+  ggtitle("3 Month T-bill vs LIBOR by VIX")+
+  geom_point(alpha=1/3, aes(colour=VIX))+
+  scale_colour_gradient(limits=c(min(usd$VIX), max(usd$VIX)), high='#ff3300', 
+                        low='#3399ff')+
+  theme_igray()+
+  geom_text(x = 2, y = 4.5,label = corr_eqn(usd$USD3MTCMR,usd$USD3MLIBOR),
+            parse = TRUE)
+
+c <- ggplot(usd, aes(USD6MLIBOR, USD6MTCMR))+
+  ggtitle("6 Month T-bill vs LIBOR by VIX")+
+  geom_point(alpha=1/3, aes(colour=VIX))+
+  scale_colour_gradient(limits=c(min(usd$VIX), max(usd$VIX)), high='#ff3300', 
+                        low='#3399ff')+
+  theme_igray()+
+  geom_text(x = 2, y = 4.5,label = corr_eqn(usd$USD6MTCMR,usd$USD6MLIBOR),
+            parse = TRUE)
+
+d <- ggplot(usd, aes(USD12MLIBOR, USD1YTCMR))+
+  ggtitle("1 Year T-bill vs LIBOR by VIX")+
+  geom_point(alpha=1/3, aes(colour=VIX))+
+  scale_colour_gradient(limits=c(min(usd$VIX), max(usd$VIX)), high='#ff3300', 
+                        low='#3399ff')+
+  theme_igray()+
+  geom_text(x = 2, y = 5,label = corr_eqn(usd$USD12MLIBOR,usd$USD1YTCMR), 
+            parse = TRUE)
+grid.arrange(a, b, c, d, ncol=2)
+```
+
+
+<br />
+So far we have seen risk sentiments expressed in VIX, TED spread and high yield spread. In short, the spreads between risk-free and riskier assets. What about the spread between short term and long term asset of the same asset class, such a 1 year T-bill  with a 10 year T-bill? In investment term, this is usually expressed in yield curves. While it is beyond the scope of his project to express yield curve over the years, I found a fanstastic 3D presentation of yield curve from 1990 to 2015 in New York Times: 
+
+http://www.nytimes.com/interactive/2015/03/19/upshot/3d-yield-curve-economic-growth.html?_r=1
+
+When time comes into play, it has to do with market participants' expectation from now to the term of the bond's maturity. What does market expect from now until a year later when one year treasury bond expires? High inflation? Deflation? Better economic growth? recession? It should be reflected on the yield curve. 
+
+For now, the time series plot of all maturities of Treasury bond reflects the contraction and expansion of short and long term bond yield spread:
+<br />
+<br />
+<br />
+
+## Treasury bonds from 1995- Present
+
+<br />
+An overview of how treasury bonds trend over the years.
+<br />
+
+```{r,fig.width=16,fig.height=7}
+ggplot(usd, na.rm = TRUE, aes(date))+
+  ggtitle("Daily Time Series Plot of Treasury bond rates (1 month - 10 years)")+
+  xlimit+
+  theme_igray()+
+  xlab("Date") +
+  ylab("Treasury bond rate") +
+  geom_line(aes(y=USD1MTCMR, colour="1 Month Treasury Rate")) +
+  geom_line(aes(y=USD3MTCMR, colour="3 Month Treasury Rate")) +
+  geom_line(aes(y=USD6MTCMR, colour="6 Month Treasury Rate")) +
+  geom_line(aes(y=USD1YTCMR, colour="1 Year Treasury Rate")) +
+  geom_line(aes(y=USD2YTCMR, colour="2 Year Treasury Rate")) +
+  geom_line(aes(y=USD3YTCMR, colour="3 Year Treasury Rate")) +
+  geom_line(aes(y=USD5YTCMR, colour="5 Year Treasury Rate")) +
+  geom_line(aes(y=USD7YTCMR, colour="7 Year Treasury Rate")) +
+  geom_line(aes(y=USD10YTCMR, colour="10 Year Treasury Rate")) +
+  scale_colour_manual("Treasury",
+    values = c("1 Month Treasury Rate" = "#CC6666", 
+               "3 Month Treasury Rate" = "#FF9999", 
+               "6 Month Treasury Rate" = "#FF99CC", 
+               "1 Year Treasury Rate" = "#CC99CC", 
+               "2 Year Treasury Rate" = "#FF99FF", 
+               "3 Year Treasury Rate" = "#CC99FF", 
+               "5 Year Treasury Rate" = "#9999CC", 
+               "7 Year Treasury Rate" = "#6666CC", 
+               "10 Year Treasury Rate" = "#3333CC"))
+     
+```
+<br />
+<br />
+<br />
+
+##LIBORS from 1995-Present 
+
+<br />
+An overview of how LIBORs trend over the years.
+<br />
+
+```{r,fig.width=16,fig.height=7}
+ggplot(usd, na.rm = TRUE, aes(date))+
+  ggtitle("Daily Time Series Plot of LIBOR rates (1 month - 1 years)")+
+  xlimit+
+  theme_igray()+
+  xlab("Date") +
+  ylab("LIBOR rate") +
+  geom_line(aes(y=USD1MLIBOR, colour="1 month LIBOR")) +
+  geom_line(aes(y=USD3MLIBOR, colour="3 month LIBOR")) +
+  geom_line(aes(y=USD6MLIBOR, colour="6 month LIBOR")) +
+  geom_line(aes(y=USD12MLIBOR, colour="12 month LIBOR")) +
+  scale_colour_manual("LIBOR",
+    values = c("1 month LIBOR" = "#99CCCC", "3 month LIBOR" = "#669999", 
+               "6 month LIBOR" = "#336666", "12 month LIBOR" = "#003333"))
+```
+<br />
+<br />
+<br />
+
+##LIBOR-T- bill spreads from 1995-Present 
+
+<br />
+An overview of how LIBORs and treasury bills spreads (LIROR rate - treasury bill rate) trend over the years. The 3 month spread is actual TED spread. This plot is the time series plot for Final Plot 1: Behavior of LIBOR and Treasury of the same maturity.
+<br />
+
+```{r,fig.width=16,fig.height=7}
+ggplot(usd, na.rm = TRUE, aes(date))+
+  ggtitle("Daily Time Series Plot of LIBOR/T-bill spreads")+
+  xlimit+
+  theme_igray()+
+  xlab("Date") +
+  ylab("LIBOR - T-bill spread") +
+  geom_line(aes(y=USD1MLIBOR-USD1MTCMR, colour="1 month spread")) +
+  geom_line(aes(y=USD3MLIBOR-USD3MTCMR, colour="3 month/TED spread")) +
+  geom_line(aes(y=USD6MLIBOR-USD6MTCMR, colour="6 month spread")) +
+  geom_line(aes(y=USD12MLIBOR-USD1YTCMR, colour="12 month spread")) +
+  scale_colour_manual("LIBOR-T-bill spreads",
+    values = c("1 month spread" = "#99CCCC", "3 month/TED spread" = "#669999", 
+               "6 month spread" = "#336666", "12 month spread" = "#003333"))
+```
+<br />
+<br />
+<br />
+
+##Behavior of Treasury bonds vs VIX
+
+The 1995-present time series capture the two major financial crisis: the internet bubble in the late nineties - early 2000s and the 2008 subprime financial crisis. 
+We can see that T-bills started to behave unusually(the spreads between short and long term yield became very narrow) much earlier than before the market became panic (when VIX spikes up). 
+
+<br />
+<br />
+```{r}
+# c(bottom, left, top, right)
+par(mar = c(5,4.2,2,4.2))
+y <- interpNA(usd$VIX, method = "linear")
+xx <- c(date, rev(date))
+yy <- c(rep(0, nrow(y)), rev(y))
+# call plot to create the plot, and plot the close data which will be overwritten with the polygon 
+plot(x=date, y=y, col='#CCFF99', xlab=("Year"), ylab=("Volatility Index"), type='l',
+     main="Daily Time Series Plot of T-bill Rates (1 month - 10 years) overlay on VIX",
+     ylim=c(0, max(y)+10))
+polygon(xx, yy, col='#CCFF00',border=NA)
+points(x=date, y=y, col='#CCFF00', type='l', lwd=2)
+
+par(new = T)
+with(usd, plot(date, USD1MTCMR , type="l", axes=F, xlab=NA, ylab=NA, 
+               col="#CC6666", ylim=c(0,8)))
+par(new = T)
+with(usd, plot(date, USD3MTCMR , type="l", axes=F, xlab=NA, ylab=NA, 
+               col="#FF9999", ylim=c(0,8)))
+par(new = T)
+with(usd, plot(date, USD6MTCMR , type="l", axes=F, xlab=NA, ylab=NA,
+               col="#FF99CC", ylim=c(0,8)))
+par(new = T)
+with(usd, plot(date, USD1YTCMR , type="l", axes=F, xlab=NA, ylab=NA,
+               col="#CC99CC", ylim=c(0,8)))
+par(new = T)
+with(usd, plot(date, USD2YTCMR , type="l", axes=F, xlab=NA, ylab=NA,
+               col="#FF99FF", ylim=c(0,8)))
+par(new = T)
+with(usd, plot(date, USD3YTCMR , type="l", axes=F, xlab=NA, ylab=NA, 
+               col="#CC99FF", ylim=c(0,8)))
+par(new = T)
+with(usd, plot(date, USD5YTCMR , type="l", axes=F, xlab=NA, ylab=NA, 
+               col="#9999CC", ylim=c(0,8)))
+par(new = T)
+with(usd, plot(date, USD7YTCMR , type="l", axes=F, xlab=NA, ylab=NA, 
+               col="#6666CC", ylim=c(0,8)))
+par(new = T)
+with(usd, plot(date, USD10YTCMR , type="l", axes=F, xlab=NA, ylab=NA, 
+               col="#3333CC", ylim=c(0,8)))
+
+axis(side = 4)
+mtext(side = 4, line = 3, 'Treasury bond rate')
+par(mar=c(0, 0, 0, 0))
+
+legend('topright', inset=c(0,0),
+       legend = c("1M T-bill","3M T-bill","6M T-bill","1Y T-bill","2Y T-bill",
+                  "3Y T-bill","5Y T-bill","7Y T-bill","10Y T-bill","VIX"),
+       lty = c(1,1,1,1,1,1,1,1,1,0), pch=c(NA,NA,NA,NA,NA,NA,NA,NA,NA,15),
+       col=c("#CC6666", "#FF9999","#FF99CC","#CC99CC","#FF99FF","#CC99FF",
+             "#9999CC","#6666CC","#3333CC",'#CCFF00'))
+
+```
+<br />
+<br />
+<br />
+
+##Intermarket behavior of S&P500 VS VIX
+
+<br />
+From the last two major financial crisis, VIX shot up to one of the highest when the stock market fell to almost the lowest. Most of the time, market rebounded before the panic is over. For other smaller market downtrends, or corrections, VIX also spiked up when market has dropped to its lowest point and was about to rebound. As such VIX as a fear index in risk sentiment is a lagging indicator. 
+
+What about VIX's two other sentimental friends, TED Spread and High yield bond spread?
+
+<br />
+
+```{r}
+# c(bottom, left, top, right)
+par(mar = c(5,4.2,2,4.2))
+y <- interpNA(usd$VIX, method = "linear")
+xx <- c(date, rev(date))
+yy <- c(rep(0, nrow(y)), rev(y))
+# call plot to create the plot, and plot the close data which will be overwritten with the polygon 
+plot(x=date, y=y, col='#CCFF99', xlab=("Year"), ylab=("VIX"), type='l',
+     main="Daily Time Series Plot of S&P500 overlays on VIX",
+     ylim=c(0, max(y)+10))
+polygon(xx, yy, col='#CCFF00',border=NA)
+points(x=date, y=y, col='#CCFF00', type='l', lwd=2)
+
+par(new = T)
+with(usd, plot(date, SP500 , type="l", axes=F, xlab=NA, ylab=NA, 
+               col="#CC6666", ylim=c(0,max(usd$SP500, na.rm=TRUE))))
+
+axis(side = 4)
+mtext(side = 4, line = 3, 'S&P500 Index')
+par(mar=c(0, 0, 0, 0))
+
+legend('topleft', inset=c(0.2,0),
+       legend = c("S&P500 Index", "VIX"),
+       lty = c(1,0), pch=c(NA,15), col=c("#3333CC",'#CCFF00'))
+
+```
+<br />
+<br />
+<br />
+
+##Final Plot 2: Intermarket behavior of TED spread and High yield bond spread vs S&P500 
+
+It seems TED and the other LIBOR-T-bill spreads and High yield bond spread did not react at the same time. High yield bond spread is almost as slow as VIX. Furthermore, high yield bond spread is quite volatile most of the time and as such not very useful as an indicator. The reason being is, it would be hard to tell which actions are for real and which is not, without the benefit of hindsight. 
+
+LIBOR-T-bill and TED spreads are the calmer beasts and have the wisdom to signal earlier. However, almost half of the stock market actions are in motion when TED spread reacted in a big way. Though, we do see a bit of TED spread jitters prior to that.  
+
+Now we shall revisit T-bills. From the plots above, if treasury bonds reacted much earlier than VIX, what about comparing it to the stock market? 
+<br />
+<br />
+```{r}
+# c(bottom, left, top, right)
+par(mar = c(5,4.2,2,4.2))
+y <- interpNA(usd$SP500, method = "linear")
+xx <- c(date, rev(date))
+yy <- c(rep(0, nrow(y)), rev(y))
+# call plot to create the plot, and plot the close data which will be overwritten with the polygon 
+plot(x=date, y=y, col='#CCFF99', xlab=("Year"), ylab=("S&P500 Index"), type='l',
+     main="Daily Time Series Plot of LIBOR-T-bill & High Yield bond spread overlay on S&P500 Index",
+     ylim=c(0, max(y)+200))
+polygon(xx, yy, col='#CCFF00',border=NA)
+points(x=date, y=y, col='#CCFF00', type='l', lwd=2)
+
+par(new = T)
+with(usd, plot(date, USD1MLIBOR-USD1MTCMR , type="l", axes=F, xlab=NA, ylab=NA, 
+               col="#CC6666", ylim=c(0,23)))
+par(new = T)
+with(usd, plot(date, TED_Spread , type="l", axes=F, xlab=NA, ylab=NA, 
+               col="#FF9999", ylim=c(0,23)))
+par(new = T)
+with(usd, plot(date, USD3MLIBOR-USD3MTCMR , type="l", axes=F, xlab=NA, ylab=NA, 
+               col="#FF99CC", ylim=c(0,23)))
+par(new = T)
+with(usd, plot(date, USD12MLIBOR-USD1YTCMR , type="l", axes=F, xlab=NA, ylab=NA, 
+               col="#CC99CC", ylim=c(0,23)))
+par(new = T)
+with(usd, plot(date, hy_bondspread , type="l", axes=F, xlab=NA, ylab=NA,
+               col="#3333CC", ylim=c(0,23)))
+
+axis(side = 4)
+mtext(side = 4, line = 3, 'Bond Spreads')
+par(mar=c(0, 0, 0, 0))
+
+legend('topleft', inset=c(0,0),
+       legend = c("1 month spread","TED_Spread","6 month spread","1 year spread","High Yield Bond Spread","S&P500 Index"),
+       lty = c(1,1,1,1,1,0), pch=c(NA,NA,NA,NA,NA,15),
+       col=c("#CC6666", "#FF9999","#FF99CC","#CC99CC","#3333CC", "#CCFF00"))
+
+```
+<br />
+<br />
+<br />
+
+##Final Plot 3: Intermarket behavior of Treasury bonds vs S&P500 
+
+<br />
+<br />
+<br />
+
+From here it is obvious that the contraction of treasury bond spread precedes S&P500 down trends. When the spread was in widest range, market trends up for years. 
+
+In both 2000-2001 and 2008 crisis, short term yield (the orange-pinkish lines) actually exceed long term yield (the blueish lines) before the crashes. It seems market expect inflation and economic growth in the longer terms to be gloomier than now! Or worse, a crash or crisis is imminent! 
+
+So yield spread (short term Vs long term maturity spread) works conversely with bond spread (high yield/riskier vs low yield/low risk). When yield spread is high, market is optimistic of the future, when yield spread is low, market is more pessimistic and risk-averse. While high yield bond or TED spread work the other way. The exploration so far has clarified types of yield and spread and how they behave under risk-on/risk-off situation. The first two final plots conclude that. 
+<br />
+With this observation in mind, we can conclude that interest rate and their spread serve as a reliable indicator to signal of trouble.  Looking forward, we can see that treasury bond spread is showing sign of contraction now, is a market downtrend imminent and is this the time to short the S&P500? 
+<br />
+
+
+```{r}
+# c(bottom, left, top, right)
+par(mar = c(5,4.2,2,4.2))
+y <- interpNA(usd$SP500, method = "linear")
+xx <- c(date, rev(date))
+yy <- c(rep(0, nrow(y)), rev(y))
+# call plot to create the plot, and plot the close data which will be overwritten with the polygon 
+plot(x=date, y=y, col='#CCFF99', xlab=("Year"), ylab=("S&P500 Index"), type='l',
+     main="Daily Time Series Plot of T-bill Rates (1 month - 10 years) overlay on S&P500 Index",
+     ylim=c(0, max(y)+200))
+polygon(xx, yy, col='#CCFF00',border=NA)
+points(x=date, y=y, col='#CCFF00', type='l', lwd=2)
+
+par(new = T)
+with(usd, plot(date, USD1MTCMR , type="l", axes=F, xlab=NA, ylab=NA, 
+               col="#CC6666", ylim=c(0,8)))
+par(new = T)
+with(usd, plot(date, USD3MTCMR , type="l", axes=F, xlab=NA, ylab=NA,
+               col="#FF9999", ylim=c(0,8)))
+par(new = T)
+with(usd, plot(date, USD6MTCMR , type="l", axes=F, xlab=NA, ylab=NA, 
+               col="#FF99CC", ylim=c(0,8)))
+par(new = T)
+with(usd, plot(date, USD1YTCMR , type="l", axes=F, xlab=NA, ylab=NA, 
+               col="#CC99CC",ylim=c(0,8)))
+par(new = T)
+with(usd, plot(date, USD2YTCMR , type="l", axes=F, xlab=NA, ylab=NA,
+               col="#FF99FF", ylim=c(0,8)))
+par(new = T)
+with(usd, plot(date, USD3YTCMR , type="l", axes=F, xlab=NA, ylab=NA, 
+               col="#CC99FF", ylim=c(0,8)))
+par(new = T)
+with(usd, plot(date, USD5YTCMR , type="l", axes=F, xlab=NA, ylab=NA, 
+               col="#9999CC", ylim=c(0,8)))
+par(new = T)
+with(usd, plot(date, USD7YTCMR , type="l", axes=F, xlab=NA, ylab=NA, 
+               col="#6666CC", ylim=c(0,8)))
+par(new = T)
+with(usd, plot(date, USD10YTCMR , type="l", axes=F, xlab=NA, ylab=NA,
+               col="#3333CC", ylim=c(0,8)))
+
+axis(side = 4)
+mtext(side = 4, line = 3, 'Treasury bond rate')
+par(mar=c(0, 0, 0, 0))
+
+legend('topright', inset=c(0.2,0),
+       legend = c("1M T-bill","3M T-bill","6M T-bill","1Y T-bill","2Y T-bill",
+                  "3Y T-bill","5Y T-bill","7Y T-bill","10Y T-bill","S&P500 Index"),
+       lty = c(1,1,1,1,1,1,1,1,1,0), pch=c(NA,NA,NA,NA,NA,NA,NA,NA,NA,15),
+       col=c("#CC6666", "#FF9999","#FF99CC","#CC99CC","#FF99FF","#CC99FF",
+             "#9999CC","#6666CC","#3333CC",'#CCFF00'))
+
+```
+
+
+<br />
+<br />
+<br />
+
+##Intermarket behavior of Treasury bonds VS Dollar Index 
+
+<br />
+Finally, since treasury bills are such a reliable indicator, we shall look at how it fare with dollar index. 
+Unlike the earlier plots, this plot shows little relationship between bonds and dollar. 
+As such the limitation of the technique we have used so far. It is meant to open room for further investigation beyond this project. More advanced techniques (to be discussed in Reflection) to be  explored for the Dollar Index relationship with other assets. 
+
+Hypothetically, we can assume that the dollar plays many roles as an international reserve and trading currency in the global market, there are much more interactions in the works than the US stock market. Understandably, it would be challenging to find a trading clue from just a few visualizations. <br />
+
+Nonetheless we should still explore dollar correlation with treasury bonds. The result shows that they generally have weak positive correlations:
+<br />
+```{r}
+cat("Correlation of Dollar Index with 1 month Treasury bond = ",
+    cor(usd$dollar_index,usd$USD1MTCMR, use='complete.obs')) 
+cat("Correlation of Dollar Index with 3 month Treasury bond = ",
+    cor(usd$dollar_index,usd$USD3MTCMR,use='complete.obs'))
+cat("Correlation of Dollar Index with 6 month Treasury bond = ",
+    cor(usd$dollar_index,usd$USD6MTCMR, use='complete.obs'))
+cat("Correlation of Dollar Index with 1 year Treasury bond = ",
+    cor(usd$dollar_index,usd$USD1YTCMR, use='complete.obs'))
+cat("Correlation of Dollar Index with 2 year Treasury bond = ", 
+    cor(usd$dollar_index,usd$USD2YTCMR,use='complete.obs'))
+cat("Correlation of Dollar Index with 3 year Treasury bond = ", 
+    cor(usd$dollar_index,usd$USD3YTCMR,use='complete.obs'))
+cat("Correlation of Dollar Index with 5 year Treasury bond = ", 
+    cor(usd$dollar_index,usd$USD5YTCMR, use='complete.obs'))
+cat("Correlation of Dollar Index with 7 year Treasury bond = ", 
+    cor(usd$dollar_index,usd$USD7YTCMR, use='complete.obs'))
+cat("Correlation of Dollar Index with 10 year Treasury bond = ",
+    cor(usd$dollar_index,usd$USD10YTCMR,  use='complete.obs'))
+```
+
+
+```{r}
+par(mar = c(5,5,2,5))
+y <- interpNA(usd$dollar_index, method = "linear")
+xx <- c(date, rev(date))
+yy <- c(rep(0, nrow(y)), rev(y))
+# call plot to create the plot, and plot the close data which will be overwritten with the polygon 
+plot(x=date, y=y, col='#CCFF99', xlab=("Year"), ylab=("Dollar Index"), type='l',
+     main="Daily Time Series Plot of T-bill Rates (1 month - 10 years) overlay on Dollar Index",
+     ylim=c(min(y), max(y)+5))
+polygon(xx, yy, col='#CCFF99',border=NA)
+points(x=date, y=y, col='#CCFF99', type='l', lwd=2)
+
+par(new = T)
+with(usd, plot(date, USD1MTCMR , type="l", axes=F, xlab=NA, ylab=NA, 
+               col="#CC6666", ylim=c(0,8)))
+par(new = T)
+with(usd, plot(date, USD3MTCMR , type="l", axes=F, xlab=NA, ylab=NA,
+               col="#FF9999", ylim=c(0,8)))
+par(new = T)
+with(usd, plot(date, USD6MTCMR , type="l", axes=F, xlab=NA, ylab=NA, 
+               col="#FF99CC",  ylim=c(0,8)))
+par(new = T)
+with(usd, plot(date, USD1YTCMR , type="l", axes=F, xlab=NA, ylab=NA, 
+               col="#CC99CC", ylim=c(0,8)))
+par(new = T)
+with(usd, plot(date, USD2YTCMR , type="l", axes=F, xlab=NA, ylab=NA,
+               col="#FF99FF", ylim=c(0,8)))
+par(new = T)
+with(usd, plot(date, USD3YTCMR , type="l", axes=F, xlab=NA, ylab=NA, 
+               col="#CC99FF", ylim=c(0,8)))
+par(new = T)
+with(usd, plot(date, USD5YTCMR , type="l", axes=F, xlab=NA, ylab=NA, 
+               col="#9999CC", ylim=c(0,8)))
+par(new = T)
+with(usd, plot(date, USD7YTCMR , type="l", axes=F, xlab=NA, ylab=NA,
+               col="#6666CC", ylim=c(0,8)))
+par(new = T)
+with(usd, plot(date, USD10YTCMR , type="l", axes=F, xlab=NA, ylab=NA, 
+               col="#3333CC", ylim=c(0,8)))
+
+axis(side = 4)
+mtext(side = 4, line = 3, 'Treasury bond rate')
+par(mar=c(0, 0, 0, 0))
+legend("topright", inset=c(0.15,0),
+       legend = c("1M T-bill","3M T-bill","6M T-bill","1Y T-bill","2Y T-bill",
+                  "3Y T-bill","5Y T-bill","7Y T-bill","10Y T-bill","Dollar Index"),
+       lty = c(1,1,1,1,1,1,1,1,1,0), pch=c(NA,NA,NA,NA,NA,NA,NA,NA,NA,15), 
+       col=c("#CC6666", "#FF9999","#FF99CC","#CC99CC","#FF99FF","#CC99FF",
+             "#9999CC","#6666CC","#3333CC",'#CCFF99'))
+
+```
+
+<br />
+<br />
+<br />
+
+##Reflection
+
+<br />
+One of the challenges is to identify a list of variables (datasets) for the analysis, making sure they share the same frequency (monthly, weekly, daily, minute or hour). Without that it is pointless to do a time series analysis. Cleaning the data and making sure each dataset align in date is another labor-intensive task. In future development, I will make use of "quantmod", an R package to extract data. 
+
+Another problem encountered with time series data is that, every dataset of the same time period has different length due to missing values (different trading days in different market), R's correlation coefficient function does not handle datasets of different length, which make perfect makes sense. As such, instead of omitting missing values, we need to add NA in the dataset so that the same length retains. Fortunately, R's 'cor' function has this feature, which is to add use='complete.obs' to the function:
+cor(x, y, use='complete.obs')
+
+As for area plots in double Y-axis plots, the polygon function used to draw area plots doesn't mix well with missing values, neither ommitting or adding 'NA' works. As such the missing values have to be filled with values, I have chosen to fill them with values between the values before and after the missing values by using this function interpNA(usd$dollar_index, method = "linear"). Neither mean nor median value work wells here as it will introduce a sudden change of value in the time series. The value before or after the missing value is probably not a good idea too as it could distort the mean, albeit slightly, in my opinion.  
+
+Once the datasets are identified, it takes some investigation to find out which one is useful and which is not. For example, effective Fed fund rates, although available daily and very up to date turns out is not as useful as it is manipulated by Fed, not completely driven by market force. Also, some asset class such as gold and oil's behviors have too many factors (politics & environmental effect) in play that affect its price, so adopting them as a quantitative indicator can be confusing and risky at times. Cleveland Financial Stress indices at different flavors look promising but only available on a monthly basis. 
+
+<br />
+There are probably more indicators required to build a robust predictive system or at least to get a reliable sense of market risk sentiments.
+
+Compare to S&P500, the dollar has much more non-lienar, complex relationships with other assets. Not forgetting serial correlationship with itself and with other assets. Which means getting an actionable data-driven trading signal for the dollar will be very challenging. The depth and breath of study to investigate this into further detail will be beyond the scope of this project. I do realize that R offers many other statistical functions to help with analysis. Autocorrelation function (acf) and Cross-correlation (CCF) are among them. 
+
+Serial correlation is correlation among time lag(s) of the same dataset. (ACF is serial correlation with itself and CCF is with the other dataset). It is a form of time series analysis that can become useful if the right methods and parameters are fitted. Since it is not part of this course, it is not included. 
+
+<br />
+This project shortlisted VIX, Treasury bonds, LIBORs, various interest rate spreads as reliable predictive indicators. These few instruments relationships are less complex and their behavior is more consistent over time. 
+VIX is helpful but it is a lagging indicator, its value lies more on confirming risk sentiment.
+Nevertheless, we shouldn't dismiss the other indicators such as gold, oil and others that are not included in this study. Their inte-relationships are not obvious in visuals but further investigation using other statistical methods as well as machine learning may yield useful predictions. 
+Given the vast and steep learning curve, I'm humbly as well as enthusiastically looking forward to the machine learning course to extend the exploration. 
+<br />
+
+
+
+
+
