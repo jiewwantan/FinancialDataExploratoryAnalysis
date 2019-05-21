@@ -197,6 +197,7 @@ The 1995-present time series capture the two major financial crisis: the interne
 From the last two major financial crisis, VIX shot up to one of the highest when the stock market fell to almost the lowest. Most of the time, market rebounded before the panic is over. For other smaller market downtrends, or corrections, VIX also spiked up when market has dropped to its lowest point and was about to rebound. As such VIX as a fear index in risk sentiment is a lagging indicator.
 
 What about VIX’s two other sentimental friends, TED Spread and High yield bond spread?
+
 [image24]: https://github.com/jiewwantan/FinancialDataExploratoryAnalysis/blob/master/IntermarketBehaviorS%26P500VsVIX.png "Intermarket behavior of S&P500 VS VIX"
 ![Intermarket behavior of S&P500 VS VIX][image24]
 
