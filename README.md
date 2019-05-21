@@ -1,4 +1,4 @@
-# FinancialDataExploratoryAnalysis
+# Financial Data Exploratory Analysis
 
 ### by Jiew Wan Tan
 ### 19th June 2016
