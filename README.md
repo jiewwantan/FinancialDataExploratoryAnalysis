@@ -113,7 +113,7 @@ Volatity index (VIX) is known to be the fear index. When market is fearful, the 
 
 The scatterplots show Dollar index & S&P500 relationships with VIX. There are weak positive (dollar) and weak negative correlations (S&P500). 
 
-[image14]: https://github.com/jiewwantan/FinancialDataExploratoryAnalysis/blob/master/VIXDollarIndexS%26P500VIX in Dollar Index and S&P500 distribution: Scatter plot"
+[image14]: https://github.com/jiewwantan/FinancialDataExploratoryAnalysis/blob/master/VIXDollarIndexS%26P500Scatterplot.png "VIX in Dollar Index and S&P500 distribution: Scatter plot"
 ![VIX in Dollar Index and S&P500 distribution: Scatter plot][image14]
 
 ## Dollar Index & S&P500 behavior in risk sentiment
