@@ -24,5 +24,5 @@ The function to calculate and display correlation coefficient on the plots:
 The dollar index has been ranging between 80 to 140 over the past twenty year. Now hovering around 121, it is on the higher end of the range. From the historgram, it has a weak binomial distribution. So it is commonly seen to be ranging around 100 and 120. Its uptrend pathway is generally steeper than downtrend. The last 8 years has seen 2 uptrends that lasted 2-3 years, whereas the the uptrend before that took about 7 years. The 3 uptrends happened during the late nineties, the late 2000s and the early to mid 2010s. 
 In all following historgrams, means are marked with red lines, 25% and 75% quantiles are marked with yellow lines. 
 
-[image1]: https://github.com/jiewwantan/FinancialDataExploratoryAnalysis/blob/master/dollar_index.png"Distribution & Time Series Characteristics for Dollar Index"
+[image1]: https://github.com/jiewwantan/FinancialDataExploratoryAnalysis/blob/master/dollar_index.png "Distribution & Time Series Characteristics for Dollar Index"
 ![Distribution & Time Series Characteristics for Dollar Index][image1]
